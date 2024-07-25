@@ -604,8 +604,8 @@ function frame(time) {
 
 canvas.addEventListener("mousemove", (ev)=>{
 	if(ev.buttons > 0) {
-		posX += ev.offsetX / 20.0;
-		posY += ev.offsetY / 20.0;
+		posX += ev.movementX;
+		posY += ev.movementY;
 		render();
 	}
 });
