@@ -1,35 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Font Renderer</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Font Renderer</title>
 </head>
 <body>
-    <canvas id="render-target" width="1200" height="1000"></canvas>
-    <style>
-        body {
-            width: 100vw;
-            height: 100vh;
-            margin: 0;
-            padding: 0;
-            background-color: #112;
+	<canvas id="render-target" width="1200" height="1000"></canvas>
+	<script src="dist/font.js"></script>
+	<style>
+		body {
+			width: 100vw;
+			height: 100vh;
+			margin: 0;
+			padding: 0;
+			background-color: #112;
 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #render-target {
-            @media (max-aspect-ratio: 1.2) {
-                width: 90%;
-            }
-            @media (min-aspect-ratio: 1.2) {
-                height: 90%;
-            }
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
 
-            background-color: black;
-        }
-    </style>
-    <script src="script.js" type="module"></script>
+		@media (max-aspect-ratio: 1.2) {
+			#render-target {
+				width: 90%;
+			}
+		}
+		@media (min-aspect-ratio: 1.2) {
+			#render-target {
+				height: 90%;
+			}
+		}
+
+		#render-target {
+			background-color: black;
+		}
+	</style>
 </body>
 </html>
