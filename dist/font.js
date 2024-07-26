@@ -502,12 +502,6 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, color }) {
     //! 3. Draw debug information
 }
 
-// let font = await (await fetch("CascadiaCode.ttf")).arrayBuffer();
-// let font = await (await fetch("LastResort-Regular.ttf")).arrayBuffer();
-// let font = await (await fetch("UbuntuMono-Regular.ttf")).arrayBuffer();
-// let font = await (await fetch("Arial.ttf")).arrayBuffer();
-// let font = await (await fetch("OpenSans-Regular.ttf")).arrayBuffer();
-// let font = await (await fetch("CourierPrime-Regular.ttf")).arrayBuffer();
 async function main() {
     let fontList = (await (await fetch("fonts/index")).text()).split("\n");
     for (let fontName of fontList) {
@@ -562,6 +556,13 @@ async function main() {
     });
     canvas.addEventListener("wheel", ev => {
         camScale -= ev.deltaY / 1000;
+        camScale = Math.min(Math.max(camScale, 0.3), 5.0);
+        //TODO move the camera toward or away from the mouse
+        // let rect = canvas.getBoundingClientRect();
+        // let relX = ev.clientX - (rect.left + rect.width / 2);
+        // let relY = ev.clientY - (rect.top + rect.height / 2);
+        // camX += relX / 2;
+        // camY += relY / 2;
         render();
     });
     render();
