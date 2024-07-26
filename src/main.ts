@@ -15,6 +15,7 @@ async function main() {
 	let ctx = canvas.getContext("2d");
 
 	let text = <string>$("#text").val();
+	let color = <string>$("#color").val();
 
 	let camX = 0;
 	let camY = 0;
@@ -26,6 +27,10 @@ async function main() {
 		let posX = 0;
 		let scale = canvas.width / font.stringWidth(text) * camScale;
 		for(let i = 0; i < text.length; i++) {
+			if(text[i].match(/\s/)) {
+				posX += 0.5 * scale;
+				continue;
+			}
 			let data = font.getGlyphData(text[i]);
 			// console.table(data.contours[0]);
 			renderGlyph(data, {
@@ -34,7 +39,7 @@ async function main() {
 				y: camY,
 				scale,
 				fill: (<HTMLInputElement>$("#fill")[0]).checked,
-				color: "red",
+				color,
 			});
 			posX += font.stringWidth(text[i]) * scale;
 		}
@@ -42,6 +47,10 @@ async function main() {
 
 	$("#text").on("keyup", ()=>{
 		text = <string>$("#text").val();
+		render();
+	});
+	$("#color").on("change", ()=>{
+		color = <string>$("#color").val();
 		render();
 	});
 	$("#fill").on("click", ()=>{
