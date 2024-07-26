@@ -531,7 +531,7 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale,
         ctx.stroke();
     }
     //! 3. Draw debug information
-    if (debug) {
+    if (debug && debugScale > 0) {
         function line(x1, y1, x2, y2) {
             let oldWidth = ctx.lineWidth;
             ctx.lineWidth = debugScale / 2;
@@ -636,8 +636,8 @@ async function main() {
             }
             let data = font.getGlyphData(text[i]);
             // console.table(data.contours[0]);
-            ctx.lineWidth = Number($("#lineThickness").val());
-            ctx.lineJoin = "bevel";
+            ctx.lineWidth = Number($("#lineThickness").val()) * camScale;
+            ctx.lineJoin = "round";
             ctx.lineCap = "round";
             renderGlyph(data, {
                 context: ctx,
@@ -654,7 +654,7 @@ async function main() {
             posX += font.stringWidth(text[i]) * scale;
         }
     }
-    function updateDebugMenu() {
+    function updateDebugUI() {
         if (text.length == 1) {
             let data = font.getGlyphData(text[0]);
             let contourCount = data.contours.length;
@@ -694,18 +694,24 @@ async function main() {
             $("#contours").val("all");
             $("#contoursSetting").hide();
         }
+        if ($("#debug")[0].checked) {
+            $("#debugUI").show();
+        }
+        else {
+            $("#debugUI").hide();
+        }
     }
-    updateDebugMenu();
+    updateDebugUI();
     $("#text").on("keyup", () => {
         text = $("#text").val();
-        updateDebugMenu();
+        updateDebugUI();
         render();
     });
     $("#color").on("change", () => {
         color = $("#color").val();
         render();
     });
-    $("#fill").on("click", () => {
+    function updateFillInput() {
         if ($("#fill")[0].checked) {
             $("#lineThicknessSetting").hide();
         }
@@ -713,35 +719,11 @@ async function main() {
             $("#lineThicknessSetting").show();
         }
         render();
-    });
-    if ($("#fill")[0].checked) { //Gotta remember: the document may or may not have preset values from past usage of the page
-        $("#lineThicknessSetting").hide();
     }
-    else {
-        $("#lineThicknessSetting").show();
-    }
+    $("#fill").on("click", updateFillInput);
+    updateFillInput();
     $("#debug").on("click", () => {
-        if ($("#debug")[0].checked) {
-            $("#debugUI").show();
-        }
-        else {
-            $("#debugUI").hide();
-        }
-        render();
-    });
-    if ($("#debug")[0].checked) {
-        $("#debugUI").show();
-    }
-    else {
-        $("#debugUI").hide();
-    }
-    $("#debugScale").on("input", () => {
-        render();
-    });
-    $("#lineThickness").on("input", () => {
-        render();
-    });
-    $("#extraZoomOut").on("input", () => {
+        updateDebugUI();
         render();
     });
     $("#font").on("change", async () => {
@@ -749,12 +731,9 @@ async function main() {
         window["font"] = font;
         render();
     });
-    $("#features").on("change", () => {
-        render();
-    });
-    $("#contours").on("change", () => {
-        render();
-    });
+    let uiInputs = $(".ui").children("section").children("input, select");
+    uiInputs.filter('input[type=range]').on("input", () => render());
+    uiInputs.filter('select').on("change", () => render());
     canvas.addEventListener("mousemove", ev => {
         if (ev.buttons > 0) {
             let rect = canvas.getBoundingClientRect();
@@ -766,7 +745,7 @@ async function main() {
         }
     });
     canvas.addEventListener("wheel", ev => {
-        let zoom = -ev.deltaY / 2000;
+        let zoom = -ev.deltaY / 1500;
         let newScale = camScale + zoom;
         if (newScale >= zoomMin && newScale <= zoomMax) {
             let rect = canvas.getBoundingClientRect();
@@ -782,6 +761,13 @@ async function main() {
             render();
         }
     });
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        render();
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
     let lastTouchX = null;
     let lastTouchY = null;
     let lastTouchDistance = null;

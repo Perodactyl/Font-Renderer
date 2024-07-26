@@ -9,7 +9,7 @@
 	<script defer src="dist/font.js"></script>
 </head>
 <body>
-	<canvas id="render-target" width="500" height="500"></canvas>
+	<canvas id="render-target" width="1000" height="1000"></canvas>
 	<div id="ui-components">
 		<div id="ui" class="ui bottom right">
 			<h3>Config</h3>
@@ -31,7 +31,7 @@
 			</section>
 			<section id="lineThicknessSetting">
 				<label for="lineThickness">Thickness:</label>
-				<input value="1.1" id="lineThickness" min="0" max="30" step="0.1" type="range" />
+				<input value="1" id="lineThickness" min="1" max="50" step="0.1" type="range" />
 			</section>
 			<section>
 				<label for="font">Font:</label><select id="font"></select> <!-- This box is dynamically populated. could be better? -->

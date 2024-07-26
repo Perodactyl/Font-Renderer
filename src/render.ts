@@ -78,7 +78,7 @@ export function renderGlyph(data: GlyphData, {context: ctx, x, y, scale, fill, d
 		ctx.stroke();
 	}
 	//! 3. Draw debug information
-	if(debug) {
+	if(debug && debugScale > 0) {
 		function line(x1, y1, x2, y2) {
 			let oldWidth = ctx.lineWidth;
 			ctx.lineWidth = debugScale / 2;

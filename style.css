@@ -17,13 +17,13 @@ body {
 	background-color: black;
 	/* width: 100%; */
 
-	@media (max-aspect-ratio: 1) {
+	/* @media (max-aspect-ratio: 1) {
 		height: 100%;
 	}
 	@media (min-aspect-ratio: 1) {
 		width: 100%;
 	}
-	object-fit: cover;
+	object-fit: cover; */
 }
 
 @media (min-width: 50rem) {
