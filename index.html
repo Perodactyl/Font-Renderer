@@ -9,7 +9,7 @@
 	<script defer src="dist/font.js"></script>
 </head>
 <body>
-	<canvas id="render-target" width="1000" height="1000"></canvas>
+	<canvas id="render-target" width="500" height="500"></canvas>
 	<div id="ui-components">
 		<div id="ui" class="ui bottom right">
 			<h3>Config</h3>
@@ -64,6 +64,10 @@
 			<section>
 				<label for="text">Size:</label>
 				<input value="5" id="debugScale" min="0" max="15" step="0.5" type="range" />
+			</section>
+			<section>
+				<label for="text">Extra Zoom Out:</label>
+				<input value="1" id="extraZoomOut" min="0" max="1" step="0.05" type="range" />
 			</section>
 			<section>
 				<label for="features">Features:</label>

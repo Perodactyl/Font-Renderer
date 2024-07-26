@@ -15,7 +15,7 @@ body {
 
 #render-target {
 	background-color: black;
-	width: 100%;
+	/* width: 100%; */
 
 	@media (max-aspect-ratio: 1) {
 		height: 100%;
@@ -23,12 +23,6 @@ body {
 	@media (min-aspect-ratio: 1) {
 		width: 100%;
 	}
-	/* @media (max-aspect-ratio: 1.2) {
-		height: 100%;
-	}
-	@media (min-aspect-ratio: 1.2) {
-		width: 100%;
-	} */
 	object-fit: cover;
 }
 
@@ -121,4 +115,8 @@ body {
 		margin: 0;
 		align-self: center;
 	}
+}
+
+#glyphInfo {
+	font-size: 0.9em;
 }

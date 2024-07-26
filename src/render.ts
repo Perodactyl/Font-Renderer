@@ -146,14 +146,14 @@ export function renderGlyph(data: GlyphData, {context: ctx, x, y, scale, fill, d
 					ctx.fillStyle = "#333";
 					let bounds = ctx.measureText(text);
 					ctx.fillRect(
-						current.x + 8,
-						current.y - 8 - bounds.fontBoundingBoxAscent,
+						current.x + debugScale,
+						current.y - debugScale - bounds.fontBoundingBoxAscent,
 						bounds.actualBoundingBoxRight + 2,
 						bounds.fontBoundingBoxAscent
 					);
 		
 					ctx.fillStyle = "#6FF";
-					ctx.fillText(text, current.x + 8, current.y - 8);
+					ctx.fillText(text, current.x + debugScale, current.y - debugScale);
 				}
 			}
 		}

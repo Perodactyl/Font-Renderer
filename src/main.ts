@@ -26,11 +26,12 @@ async function main() {
 
 	let shouldApplyContours = false;
 
+	let debugDraw = [];
+
 	function render() {
-		// console.clear();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		let posX = 0;
-		let scale = canvas.width * camScale;
+		let scale = canvas.width * camScale * Number($("#extraZoomOut").val());
 		let baseline = font.getGlyphData("M").maxY;
 		for(let i = 0; i < text.length; i++) {
 			if(text[i].match(/\s/)) {
@@ -69,9 +70,9 @@ async function main() {
 
 			$("#contourCount").text(contourCount);
 			$("#pointCount").text(pointSummary);
-			$("#glyphCodepoint").text(codepoint);
+			$("#glyphCodepoint").text(`U+${codepoint.toString(16).padStart(4, "0")} (dec ${codepoint})`);
 			$("#glyphID").text(glyphId);
-			$("#glyphOffset").text(glyphOffset);
+			$("#glyphOffset").text(`${glyphOffset.toString(16).padStart(8, "0").replace(/(....)(....)/, "$1 $2")} (dec ${glyphOffset})`);
 			$("#glyphInfo").show();
 
 			let pastContourSetting = $("#contours").val();
@@ -142,6 +143,9 @@ async function main() {
 	$("#lineThickness").on("input", ()=>{
 		render();
 	});
+	$("#extraZoomOut").on("input", ()=>{
+		render();
+	});
 	$("#font").on("change", async ()=>{
 		font = await Font.load(<string>$("#font").val());
 		window["font"] = font;
@@ -156,25 +160,38 @@ async function main() {
 
 	canvas.addEventListener("mousemove", ev=>{
 		if(ev.buttons > 0) {
-			camX += ev.movementX;
-			camY += ev.movementY;
+			let rect = canvas.getBoundingClientRect();
+			let moveX = ev.movementX * (canvas.width / rect.width);
+			let moveY = ev.movementY * (canvas.height / rect.height);
+
+			camX += moveX * camScale;
+			camY += moveY * camScale;
 			render();
 		}
 	});
 
-	canvas.addEventListener("wheel", ev=>{
-		camScale -= ev.deltaY / 1000;
-		camScale = Math.min(Math.max(camScale, zoomMin), zoomMax);
-		
-		//TODO move the camera toward or away from the mouse
-		// let rect = canvas.getBoundingClientRect();
-		// let relX = ev.clientX - (rect.left + rect.width / 2);
-		// let relY = ev.clientY - (rect.top + rect.height / 2);
-
-		// camX += relX / 2;
-		// camY += relY / 2;
-
-		render();
+	canvas.addEventListener("wheel", ev=>{ //This took me way longer than it should have.
+		let zoom = -ev.deltaY / 2000;
+		let newScale = camScale + zoom;
+		if(newScale >= zoomMin && newScale <= zoomMax) {
+			let rect = canvas.getBoundingClientRect();
+	
+			let mouseX = (ev.clientX - rect.left) * (canvas.width / rect.width);
+			let mouseY = (ev.clientY - rect.top) * (canvas.height / rect.height);
+			
+			let worldXPre = (mouseX * camScale + camX);
+			let worldYPre = (mouseY * camScale + camY);
+			
+			camScale = newScale;
+			
+			let worldXPost = (mouseX * camScale + camX);
+			let worldYPost = (mouseY * camScale + camY);
+	
+			camX += (worldXPre - worldXPost);
+			camY += (worldYPre - worldYPost);
+	
+			render();
+		}
 	});
 
 	let lastTouchX = null;

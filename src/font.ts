@@ -51,6 +51,8 @@ export class Font {
 	location: Map<GlyphIndex, Offset> = new Map();
 	spacing: Map<GlyphIndex, FUnits> = new Map();
 
+	glyphDataMemo: Map<Offset, GlyphData> = new Map();
+
 	unitsPerEm: FUnits; //Conversion factor from FUnits to Ems.
 
 	constructor(TTFData: ArrayBuffer) {
@@ -210,6 +212,9 @@ export class Font {
 	}
 
 	readGlyph(offset: number): GlyphData {
+		if(this.glyphDataMemo.has(offset)) {
+			return this.glyphDataMemo.get(offset);
+		}
 		let reader = this.reader;
 		reader.seek(offset);
 		let contourCount = reader.getInt16();
@@ -240,8 +245,8 @@ export class Font {
 			onCurve: boolean,
 			xShort: boolean,
 			yShort: boolean,
-			xNeg: boolean,
-			yNeg: boolean,
+			xPositive: boolean,
+			yPositive: boolean,
 			xSame: boolean,
 			ySame: boolean,
 		}
@@ -261,8 +266,8 @@ export class Font {
 				onCurve,
 				xShort,
 				yShort,
-				xNeg: xShort && !infoX,
-				yNeg: yShort && !infoY,
+				xPositive: infoX,
+				yPositive: infoY,
 				xSame: !xShort && infoX,
 				ySame: !yShort && infoY,
 			}
@@ -283,28 +288,33 @@ export class Font {
 		let xCoords: FUnits[] = [];
 		let yCoords: FUnits[] = [];
 	
+		// let lastDeltaX = 0;
+		// let lastDeltaY = 0;
 		let curX = 0;
 		let curY = 0;
+
+		console.table(flags);
 	
 		for(let i = 0; i < numPts; i++) {
 			if(!flags[i].xSame) {
 				if(flags[i].xShort) {
 					let value = reader.getUInt8();
-					if(flags[i].xNeg) {
-						value = -value;
+					console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
+					if(flags[i].xPositive) {
+						curX += value;
+						// lastDeltaX = value;
+					} else {
+						// lastDeltaX = -value;
+						curX -= value;
 					}
-					// console.log(`Point X is short; it ${flags[i].xNeg ? "is" : "is not"} negative. (= ${value})`);
-					curX += value;
 				} else {
 					let coord = reader.getInt16();
-					// console.log(`Point X is long (= ${coord})`);
-					if(coord > 10000 || coord < -5000) {
-						// console.log("Error detected, replacing.");
-						// return readGlyph(tables.glyf.offset);
-					} else {
-						curX += coord;
-					}
+					console.log(`Point ${i} X is long (= ${coord})`);
+					curX += coord;
 				}
+			} else {
+				console.log(`Point ${i} X is same`);
+				// curX += lastDeltaX;
 			}
 			xCoords.push(curX);
 		}
@@ -313,21 +323,22 @@ export class Font {
 			if(!flags[i].ySame) {
 				if(flags[i].yShort) {
 					let value = reader.getUInt8();
-					if(flags[i].yNeg) {
-						value = -value;
+					console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
+					if(flags[i].yPositive) {
+						curY += value;
+						// lastDeltaY = value;
+					} else {
+						curY -= value;
+						// lastDeltaY = -value;
 					}
-					// console.log(`Point Y is short; it ${flags[i].xNeg ? "is" : "is not"} negative. (= ${value})`);
-					curY += value;
 				} else {
 					let coord = reader.getInt16();
-					// console.log(`Point Y is long (= ${coord})`);
-					if(coord > 10000 || coord < -5000) {
-						// console.log("Error detected, replacing.");
-						// return readGlyph(tables.glyf.offset);
-					} else {
-						curY += coord;
-					}
+					console.log(`Point ${i} Y is long (= ${coord})`);
+					curY += coord;
 				}
+			} else {
+				console.log(`Point ${i} Y is same`);
+				// curY += lastDeltaY;
 			}
 			yCoords.push(curY);
 		}
@@ -353,7 +364,7 @@ export class Font {
 			for(let point of points) {
 				currentContour.push(point);
 				if(point.isEndOfContour) {
-					//* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
+					//Add the starting point back in, at the end, to make a loop.
 					currentContour.push({
 						...currentContour[0],
 						isReturnPoint: true,
@@ -392,6 +403,8 @@ export class Font {
 			minY: yMin / this.unitsPerEm,
 			maxY: yMax / this.unitsPerEm,
 		};
+
+		this.glyphDataMemo.set(offset, out);
 	
 		return out;
 	}

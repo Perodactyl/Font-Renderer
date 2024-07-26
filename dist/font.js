@@ -124,6 +124,7 @@ class Font {
     cmap = new Map();
     location = new Map();
     spacing = new Map();
+    glyphDataMemo = new Map();
     unitsPerEm; //Conversion factor from FUnits to Ems.
     constructor(TTFData) {
         let reader = new Reader(TTFData);
@@ -263,6 +264,9 @@ class Font {
         return this.tables.glyf; //'UNKNOWN GLYPH' is always the first glyph stored.
     }
     readGlyph(offset) {
+        if (this.glyphDataMemo.has(offset)) {
+            return this.glyphDataMemo.get(offset);
+        }
         let reader = this.reader;
         reader.seek(offset);
         let contourCount = reader.getInt16();
@@ -297,8 +301,8 @@ class Font {
                 onCurve,
                 xShort,
                 yShort,
-                xNeg: xShort && !infoX,
-                yNeg: yShort && !infoY,
+                xPositive: infoX,
+                yPositive: infoY,
                 xSame: !xShort && infoX,
                 ySame: !yShort && infoY,
             };
@@ -316,26 +320,34 @@ class Font {
         //Coordinates are relative to previous location. Starts at (0, 0)
         let xCoords = [];
         let yCoords = [];
+        // let lastDeltaX = 0;
+        // let lastDeltaY = 0;
         let curX = 0;
         let curY = 0;
+        console.table(flags);
         for (let i = 0; i < numPts; i++) {
             if (!flags[i].xSame) {
                 if (flags[i].xShort) {
                     let value = reader.getUInt8();
-                    if (flags[i].xNeg) {
-                        value = -value;
+                    console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
+                    if (flags[i].xPositive) {
+                        curX += value;
+                        // lastDeltaX = value;
                     }
-                    // console.log(`Point X is short; it ${flags[i].xNeg ? "is" : "is not"} negative. (= ${value})`);
-                    curX += value;
+                    else {
+                        // lastDeltaX = -value;
+                        curX -= value;
+                    }
                 }
                 else {
                     let coord = reader.getInt16();
-                    // console.log(`Point X is long (= ${coord})`);
-                    if (coord > 10000 || coord < -5000) ;
-                    else {
-                        curX += coord;
-                    }
+                    console.log(`Point ${i} X is long (= ${coord})`);
+                    curX += coord;
                 }
+            }
+            else {
+                console.log(`Point ${i} X is same`);
+                // curX += lastDeltaX;
             }
             xCoords.push(curX);
         }
@@ -343,20 +355,25 @@ class Font {
             if (!flags[i].ySame) {
                 if (flags[i].yShort) {
                     let value = reader.getUInt8();
-                    if (flags[i].yNeg) {
-                        value = -value;
+                    console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
+                    if (flags[i].yPositive) {
+                        curY += value;
+                        // lastDeltaY = value;
                     }
-                    // console.log(`Point Y is short; it ${flags[i].xNeg ? "is" : "is not"} negative. (= ${value})`);
-                    curY += value;
+                    else {
+                        curY -= value;
+                        // lastDeltaY = -value;
+                    }
                 }
                 else {
                     let coord = reader.getInt16();
-                    // console.log(`Point Y is long (= ${coord})`);
-                    if (coord > 10000 || coord < -5000) ;
-                    else {
-                        curY += coord;
-                    }
+                    console.log(`Point ${i} Y is long (= ${coord})`);
+                    curY += coord;
                 }
+            }
+            else {
+                console.log(`Point ${i} Y is same`);
+                // curY += lastDeltaY;
             }
             yCoords.push(curY);
         }
@@ -379,7 +396,7 @@ class Font {
             for (let point of points) {
                 currentContour.push(point);
                 if (point.isEndOfContour) {
-                    //* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
+                    //Add the starting point back in, at the end, to make a loop.
                     currentContour.push({
                         ...currentContour[0],
                         isReturnPoint: true,
@@ -416,6 +433,7 @@ class Font {
             minY: yMin / this.unitsPerEm,
             maxY: yMax / this.unitsPerEm,
         };
+        this.glyphDataMemo.set(offset, out);
         return out;
     }
     //Shorthand for readGlyph with some other lookups inbetween.
@@ -579,9 +597,9 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale,
                     ctx.font = `${debugScale * 4}px Arial`;
                     ctx.fillStyle = "#333";
                     let bounds = ctx.measureText(text);
-                    ctx.fillRect(current.x + 8, current.y - 8 - bounds.fontBoundingBoxAscent, bounds.actualBoundingBoxRight + 2, bounds.fontBoundingBoxAscent);
+                    ctx.fillRect(current.x + debugScale, current.y - debugScale - bounds.fontBoundingBoxAscent, bounds.actualBoundingBoxRight + 2, bounds.fontBoundingBoxAscent);
                     ctx.fillStyle = "#6FF";
-                    ctx.fillText(text, current.x + 8, current.y - 8);
+                    ctx.fillText(text, current.x + debugScale, current.y - debugScale);
                 }
             }
         }
@@ -607,10 +625,9 @@ async function main() {
     let zoomMax = 5.0;
     let shouldApplyContours = false;
     function render() {
-        // console.clear();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let posX = 0;
-        let scale = canvas.width * camScale;
+        let scale = canvas.width * camScale * Number($("#extraZoomOut").val());
         let baseline = font.getGlyphData("M").maxY;
         for (let i = 0; i < text.length; i++) {
             if (text[i].match(/\s/)) {
@@ -648,9 +665,9 @@ async function main() {
             let glyphOffset = font.location.get(glyphId);
             $("#contourCount").text(contourCount);
             $("#pointCount").text(pointSummary);
-            $("#glyphCodepoint").text(codepoint);
+            $("#glyphCodepoint").text(`U+${codepoint.toString(16).padStart(4, "0")} (dec ${codepoint})`);
             $("#glyphID").text(glyphId);
-            $("#glyphOffset").text(glyphOffset);
+            $("#glyphOffset").text(`${glyphOffset.toString(16).padStart(8, "0").replace(/(....)(....)/, "$1 $2")} (dec ${glyphOffset})`);
             $("#glyphInfo").show();
             let pastContourSetting = $("#contours").val();
             $("#contours").children().remove();
@@ -724,6 +741,9 @@ async function main() {
     $("#lineThickness").on("input", () => {
         render();
     });
+    $("#extraZoomOut").on("input", () => {
+        render();
+    });
     $("#font").on("change", async () => {
         font = await Font.load($("#font").val());
         window["font"] = font;
@@ -737,21 +757,30 @@ async function main() {
     });
     canvas.addEventListener("mousemove", ev => {
         if (ev.buttons > 0) {
-            camX += ev.movementX;
-            camY += ev.movementY;
+            let rect = canvas.getBoundingClientRect();
+            let moveX = ev.movementX * (canvas.width / rect.width);
+            let moveY = ev.movementY * (canvas.height / rect.height);
+            camX += moveX * camScale;
+            camY += moveY * camScale;
             render();
         }
     });
     canvas.addEventListener("wheel", ev => {
-        camScale -= ev.deltaY / 1000;
-        camScale = Math.min(Math.max(camScale, zoomMin), zoomMax);
-        //TODO move the camera toward or away from the mouse
-        // let rect = canvas.getBoundingClientRect();
-        // let relX = ev.clientX - (rect.left + rect.width / 2);
-        // let relY = ev.clientY - (rect.top + rect.height / 2);
-        // camX += relX / 2;
-        // camY += relY / 2;
-        render();
+        let zoom = -ev.deltaY / 2000;
+        let newScale = camScale + zoom;
+        if (newScale >= zoomMin && newScale <= zoomMax) {
+            let rect = canvas.getBoundingClientRect();
+            let mouseX = (ev.clientX - rect.left) * (canvas.width / rect.width);
+            let mouseY = (ev.clientY - rect.top) * (canvas.height / rect.height);
+            let worldXPre = (mouseX * camScale + camX);
+            let worldYPre = (mouseY * camScale + camY);
+            camScale = newScale;
+            let worldXPost = (mouseX * camScale + camX);
+            let worldYPost = (mouseY * camScale + camY);
+            camX += (worldXPre - worldXPost);
+            camY += (worldYPre - worldYPost);
+            render();
+        }
     });
     let lastTouchX = null;
     let lastTouchY = null;
