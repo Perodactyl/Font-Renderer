@@ -368,7 +368,7 @@ export class Font {
 				if(!current.isOnCurve && !next.isOnCurve) {
 					let midX = (current.x + next.x) / 2;
 					let midY = (current.y + next.y) / 2;
-					contour.push({
+					contour.splice(i+1, 0, {
 						x: midX,
 						y: midY,
 						isEndOfContour: false,

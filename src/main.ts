@@ -39,6 +39,7 @@ async function main() {
 				y: camY,
 				scale,
 				fill: (<HTMLInputElement>$("#fill")[0]).checked,
+				debug: (<HTMLInputElement>$("#debug")[0]).checked,
 				color,
 			});
 			posX += font.stringWidth(text[i]) * scale;
@@ -54,6 +55,9 @@ async function main() {
 		render();
 	});
 	$("#fill").on("click", ()=>{
+		render();
+	});
+	$("#debug").on("click", ()=>{
 		render();
 	});
 	$("#font").on("change", async ev=>{
