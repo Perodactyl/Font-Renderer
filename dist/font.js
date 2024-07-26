@@ -608,7 +608,8 @@ async function main() {
         // console.clear();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let posX = 0;
-        let scale = canvas.width / font.stringWidth(text) * camScale;
+        let scale = canvas.width * camScale;
+        let baseline = font.getGlyphData("M").maxY;
         for (let i = 0; i < text.length; i++) {
             if (text[i].match(/\s/)) {
                 posX += 0.5 * scale;
@@ -622,7 +623,7 @@ async function main() {
             renderGlyph(data, {
                 context: ctx,
                 x: camX + posX,
-                y: camY,
+                y: camY + (baseline - data.maxY) * scale,
                 scale,
                 fill: $("#fill")[0].checked,
                 debug: $("#debug")[0].checked,
