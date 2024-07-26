@@ -526,6 +526,26 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale,
         for (let contour of glyph.contours) {
             for (let i = 0; i < contour.length; i++) {
                 let current = contour[i];
+                let next = contour[(i + 1) % contour.length];
+                let prev = contour[i == 0 ? contour.length - 1 : i - 1];
+                if (current.isImplicit) {
+                    ctx.strokeStyle = "#F00";
+                    line(current.x, current.y, next.x, next.y);
+                    line(current.x, current.y, prev.x, prev.y);
+                }
+                else if (current.isOnCurve) ;
+                else {
+                    ctx.strokeStyle = "#CCCC";
+                    if (!next.isImplicit)
+                        line(current.x, current.y, next.x, next.y);
+                    if (!prev.isImplicit)
+                        line(current.x, current.y, prev.x, prev.y);
+                }
+            }
+        }
+        for (let contour of glyph.contours) {
+            for (let i = 0; i < contour.length; i++) {
+                let current = contour[i];
                 contour[(i + 1) % contour.length];
                 contour[i == 0 ? contour.length - 1 : i - 1];
                 if (current.isImplicit) {
@@ -541,26 +561,6 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale,
                     ctx.fillStyle = "#00F";
                     ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
                     ctx.strokeStyle = "#CCCC";
-                }
-            }
-        }
-        for (let contour of glyph.contours) {
-            for (let i = 0; i < contour.length; i++) {
-                let current = contour[i];
-                let next = contour[(i + 1) % contour.length];
-                let prev = contour[i == 0 ? contour.length - 1 : i - 1];
-                if (current.isImplicit) {
-                    ctx.strokeStyle = "#F00";
-                    line(current.x, current.y, next.x, next.y);
-                    line(current.x, current.y, prev.x, prev.y);
-                }
-                else if (current.isOnCurve) ;
-                else {
-                    ctx.strokeStyle = "#CCCC";
-                    if (!next.isImplicit)
-                        line(current.x, current.y, next.x, next.y);
-                    if (!prev.isImplicit)
-                        line(current.x, current.y, prev.x, prev.y);
                 }
             }
         }

@@ -95,26 +95,6 @@ export function renderGlyph(data: GlyphData, {context: ctx, x, y, scale, fill, d
 				let prev = contour[i == 0 ? contour.length-1 : i-1];
 
 				if(current.isImplicit) {
-					ctx.fillStyle = "#F00";
-					ctx.strokeStyle = "#F00";
-					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
-				} else if(current.isOnCurve) {
-					ctx.fillStyle = current.isEndOfContour ? "#6FA" : "#0F0";
-					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
-				} else {
-					ctx.fillStyle = "#00F";
-					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
-					ctx.strokeStyle = "#CCCC";
-				}
-			}
-		}
-		for(let contour of glyph.contours) {
-			for(let i = 0; i < contour.length; i++) {
-				let current = contour[i];
-				let next = contour[(i+1) % contour.length];
-				let prev = contour[i == 0 ? contour.length-1 : i-1];
-
-				if(current.isImplicit) {
 					ctx.strokeStyle = "#F00";
 					line(current.x, current.y, next.x, next.y);
 					line(current.x, current.y, prev.x, prev.y);
@@ -125,6 +105,26 @@ export function renderGlyph(data: GlyphData, {context: ctx, x, y, scale, fill, d
 						line(current.x, current.y, next.x, next.y);
 					if(!prev.isImplicit)
 						line(current.x, current.y, prev.x, prev.y);
+				}
+			}
+		}
+		for(let contour of glyph.contours) {
+			for(let i = 0; i < contour.length; i++) {
+				let current = contour[i];
+				let next = contour[(i+1) % contour.length];
+				let prev = contour[i == 0 ? contour.length-1 : i-1];
+
+				if(current.isImplicit) {
+					ctx.fillStyle = "#F00";
+					ctx.strokeStyle = "#F00";
+					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+				} else if(current.isOnCurve) {
+					ctx.fillStyle = current.isEndOfContour ? "#6FA" : "#0F0";
+					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+				} else {
+					ctx.fillStyle = "#00F";
+					ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+					ctx.strokeStyle = "#CCCC";
 				}
 			}
 		}
