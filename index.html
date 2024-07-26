@@ -15,11 +15,11 @@
 			<h3>Config</h3>
 			<section>
 				<label for="text">Text:</label>
-				<input id="text" placeholder="Write Something..." />
+				<input id="text" placeholder="Write Something..." value="Hello, World!"/>
 			</section>
 			<section>
 				<label for="color">Color:</label>
-				<input id="color" type="color" />
+				<input id="color" type="color" value="#ffffff"/>
 			</section>
 			<section>
 				<label for="debug">Debug</label>
@@ -47,6 +47,7 @@
 				<label for="features">Features:</label>
 				<select id="features">
 					<option value="">Regular</option>
+					<option value="no-bezier">Remove curves</option>
 					<option value="no-bezier,mask-implicit">Remove implicit points</option>
 					<option value="no-bezier,mask-off-curve">Remove control points</option>
 					<option value="mask-implicit,mask-off-curve">Only green points</option>

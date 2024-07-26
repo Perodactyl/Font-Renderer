@@ -21,6 +21,9 @@ async function main() {
 	let camY = 0;
 	let camScale = 1;
 
+	let zoomMin = 0.1;
+	let zoomMax = 5.0;
+
 	let shouldApplyContours = false;
 
 	function render() {
@@ -146,7 +149,7 @@ async function main() {
 
 	canvas.addEventListener("wheel", ev=>{
 		camScale -= ev.deltaY / 1000;
-		camScale = Math.min(Math.max(camScale, 0.1), 5.0);
+		camScale = Math.min(Math.max(camScale, zoomMin), zoomMax);
 		
 		//TODO move the camera toward or away from the mouse
 		// let rect = canvas.getBoundingClientRect();
@@ -187,7 +190,9 @@ async function main() {
 
 			let distance = Math.sqrt(pointingX**2 + pointingY**2);
 			if(lastTouchDistance != null) {
+				console.log("Pinch!");
 				camScale -= distance / 10000;
+				Math.min(Math.max(camScale, zoomMin), zoomMax);
 			}
 			lastTouchDistance = distance;
 		}
