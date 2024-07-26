@@ -57,10 +57,24 @@ async function main() {
 			posX += font.stringWidth(text[i]) * scale;
 		}
 	}
-	function updateContourSelector() {
+	function updateDebugMenu() {
 		if(text.length == 1) {
-			let contourCount = font.getGlyphData(text[0]).contours.length;
-			let origValue = $("#contours").val();
+			let data = font.getGlyphData(text[0]);
+			let contourCount = data.contours.length;
+			let contourLengths = data.contours.map(c=>c.length)
+			let pointSummary = contourCount == 1 ? data.contours[0].length.toString() : contourLengths.join("+")+"="+contourLengths.reduce((a,b)=>a+b,0);
+			let codepoint = text.codePointAt(0);
+			let glyphId = font.cmap.get(codepoint);
+			let glyphOffset = font.location.get(glyphId);
+
+			$("#contourCount").text(contourCount);
+			$("#pointCount").text(pointSummary);
+			$("#glyphCodepoint").text(codepoint);
+			$("#glyphID").text(glyphId);
+			$("#glyphOffset").text(glyphOffset);
+			$("#glyphInfo").show();
+
+			let pastContourSetting = $("#contours").val();
 			$("#contours").children().remove();
 			$("#contours").append('<option value="all">All</option>');
 			$("#contours").append('<option value="0">Primary</option>');
@@ -74,21 +88,22 @@ async function main() {
 			for(let i = 1; i < contourCount; i++) {
 				$("#contours").append(`<option value="${i}">Contour #${i}</option>`);
 			}
-			if(origValue) {
-				$("#contours").val(origValue);
+			if(pastContourSetting) {
+				$("#contours").val(pastContourSetting);
 			}
 			$("#contoursSetting").show();
 		} else {
 			shouldApplyContours = false;
+			$("#glyphInfo").hide();
 			$("#contours").val("all");
 			$("#contoursSetting").hide();
 		}
 	}
-	updateContourSelector();
+	updateDebugMenu();
 
 	$("#text").on("keyup", ()=>{
 		text = <string>$("#text").val();
-		updateContourSelector();
+		updateDebugMenu();
 		render();
 	});
 	$("#color").on("change", ()=>{
@@ -192,7 +207,7 @@ async function main() {
 			if(lastTouchDistance != null) {
 				console.log("Pinch!");
 				camScale -= distance / 10000;
-				Math.min(Math.max(camScale, zoomMin), zoomMax);
+				camScale = Math.min(Math.max(camScale, zoomMin), zoomMax);
 			}
 			lastTouchDistance = distance;
 		}

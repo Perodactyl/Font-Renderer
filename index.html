@@ -39,9 +39,31 @@
 		</div>
 		<div id="debugUI" class="ui bottom left" hidden>
 			<h3>Debug</h3>
+			<div id="glyphInfo">
+				<section>
+					<label for="contourCount">Contours:</label>
+					<span id="contourCount"></span>
+				</section>
+				<section>
+					<label for="pointCount">Points:</label>
+					<span id="pointCount"></span>
+				</section>
+				<section>
+					<label for="glyphCodepoint">Codepoint:</label>
+					<span id="glyphCodepoint"></span>
+				</section>
+				<section>
+					<label for="glyphID">Glyph ID:</label>
+					<span id="glyphID"></span>
+				</section>
+				<section>
+					<label for="contourCount">Glyph Offset:</label>
+					<span id="glyphOffset"></span>
+				</section>
+			</div>
 			<section>
 				<label for="text">Size:</label>
-				<input value="5" id="debugScale" min="3" max="15" step="0.5" type="range" />
+				<input value="5" id="debugScale" min="0" max="15" step="0.5" type="range" />
 			</section>
 			<section>
 				<label for="features">Features:</label>
