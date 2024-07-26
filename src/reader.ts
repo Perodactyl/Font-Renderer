@@ -128,7 +128,7 @@ export class Reader {
 
 	//TODO implement Fixed type
 	skipFixed() {
-		this.offset += 2;
+		this.offset += 4;
 	}
 }
 

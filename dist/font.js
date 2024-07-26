@@ -111,7 +111,7 @@ class Reader {
     }
     //TODO implement Fixed type
     skipFixed() {
-        this.offset += 2;
+        this.offset += 4;
     }
 }
 function isBitSet(value, bitNumber) {
@@ -139,9 +139,10 @@ class Font {
             let tag = reader.getTag();
             reader.skipUInt32(); //'Checksum'
             let offset = reader.getUInt32();
-            reader.skipUInt32; //'Length'
+            reader.skipUInt32(); //'Length'
             this.tables[tag] = offset;
         }
+        // console.table(this.tables);
         //! 2. Get metadata from the head table
         reader.seek(this.tables.head);
         reader.skipFixed(); //'Version'
@@ -164,7 +165,7 @@ class Font {
                 value = reader.getUInt16();
             else
                 value = reader.getUInt32();
-            this.location.set(i, value);
+            this.location.set(i, this.tables.glyf + value);
         }
         //! 4. Populate horizontal spacing data
         //? 4.1 Get number of width metrics from hhea table
@@ -185,7 +186,7 @@ class Font {
         //! 5. Populate cmap.
         //TODO: Implement format 12
         reader.seek(this.tables.cmap);
-        reader.skipFixed(); //'Version'
+        reader.skipUInt16(); //'Version'
         let numCmapSubtables = reader.getUInt16();
         for (let i = 0; i < numCmapSubtables; i++) {
             let platformID = reader.getUInt16();
@@ -279,6 +280,7 @@ class Font {
             endPointIndices.push(reader.getUInt16());
         }
         let numPts = endPointIndices[endPointIndices.length - 1] + 1; //The last specified endpoint must be the last point overall.
+        // console.log(`${numPts} points`);
         //Instructions are used for hinting; we ain't doin' that today. TODO?
         let instructionLength = reader.getUInt16();
         reader.skip(instructionLength);
@@ -309,6 +311,7 @@ class Font {
                 i++;
             }
         }
+        // console.log(`${flags.length} flags entries`)
         //Point location data
         //Coordinates are relative to previous location. Starts at (0, 0)
         let xCoords = [];
@@ -361,8 +364,8 @@ class Font {
         let points = [];
         for (let i = 0; i < numPts; i++) {
             points.push({
-                x: xCoords[i],
-                y: yCoords[i],
+                x: xCoords[i] / this.unitsPerEm,
+                y: yCoords[i] / this.unitsPerEm,
                 isEndOfContour: endPointIndices.includes(i),
                 isOnCurve: flags[i].onCurve,
                 isImplicit: false,
@@ -375,6 +378,8 @@ class Font {
             for (let point of points) {
                 currentContour.push(point);
                 if (point.isEndOfContour) {
+                    //* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
+                    currentContour.push(currentContour[0]);
                     contours.push(currentContour);
                     currentContour = [];
                 }
@@ -384,8 +389,8 @@ class Font {
         //Add implied points on the curve.
         for (let contour of contours) {
             for (let i = 0; i < contour.length; i++) {
-                let current = points[i];
-                let next = points[(i + 1) % contour.length];
+                let current = contour[i];
+                let next = contour[(i + 1) % contour.length];
                 if (!current.isOnCurve && !next.isOnCurve) {
                     let midX = (current.x + next.x) / 2;
                     let midY = (current.y + next.y) / 2;
@@ -401,29 +406,36 @@ class Font {
         }
         let out = {
             contours,
-            minX: xMin,
-            maxX: xMax,
-            minY: yMin,
-            maxY: yMax,
+            minX: xMin / this.unitsPerEm,
+            maxX: xMax / this.unitsPerEm,
+            minY: yMin / this.unitsPerEm,
+            maxY: yMax / this.unitsPerEm,
         };
         return out;
+    }
+    //Shorthand for readGlyph with some other lookups inbetween.
+    getGlyphData(character) {
+        let codepoint = typeof character == "string" ? character.codePointAt(0) : character;
+        let glyphNumber = this.cmap.get(codepoint) ?? 0;
+        let glyphOffset = this.location.get(glyphNumber);
+        return this.readGlyph(glyphOffset);
     }
     stringWidth(text) {
         let sum = 0;
         for (let i = 0; i < text.length; i++) {
             let codepoint = text.codePointAt(i);
             if (codepoint == 32) {
-                sum += this.unitsPerEm / 2;
+                sum += 0.5;
             }
             else if (this.cmap.has(codepoint)) {
                 this.cmap.get(codepoint);
                 if (this.spacing.has(codepoint))
-                    sum += this.spacing.get(this.cmap.get(codepoint));
+                    sum += this.spacing.get(this.cmap.get(codepoint)) / this.unitsPerEm;
                 else
-                    sum += this.spacing.get(0);
+                    sum += this.spacing.get(0) / this.unitsPerEm;
             }
             else
-                sum += this.spacing.get(0);
+                sum += this.spacing.get(0) / this.unitsPerEm;
         }
         return sum;
     }
@@ -434,5 +446,110 @@ class Font {
     }
 }
 
-Font.load("fonts/CourierPrime-Regular.ttf").then(v => v);
+function renderGlyph(data, { context: ctx, x, y, scale, fill, color }) {
+    //! 1. Transform the glyph from Em space to render space
+    let transformerX = (pt) => pt * scale + x;
+    let transformerY = (pt) => (data.maxY - pt) * scale + y; //Em space is flipped vertically (the math way instead of the code way)
+    let glyph = {
+        contours: data.contours.map(c => c.map(pt => ({
+            x: transformerX(pt.x),
+            y: transformerY(pt.y),
+            isOnCurve: pt.isOnCurve,
+            isImplicit: pt.isImplicit,
+            isEndOfContour: pt.isEndOfContour,
+        }))),
+        minX: transformerX(data.minX),
+        maxX: transformerX(data.maxX),
+        minY: transformerY(data.minY),
+        maxY: transformerY(data.maxY),
+    };
+    // console.table(glyph.contours[0])
+    //! 2. Draw the glyph data
+    ctx.beginPath();
+    for (let contour of glyph.contours) {
+        //? 1.1 Find the first point that isn't a control point
+        let start = 0;
+        while (!contour[start].isOnCurve) {
+            start++;
+            if (start == contour.length) {
+                throw "Contour has no points which are on the curve!";
+            }
+        }
+        ctx.moveTo(contour[start].x, contour[start].y);
+        //? 1.2 Loop through the other points and draw with them.
+        for (let i = 0; i < contour.length; i++) {
+            let currentPoint = contour[(start + i) % contour.length];
+            let lastPoint = contour[(start + i) == 0 ? contour.length - 1 : start + i - 1];
+            if (currentPoint.isOnCurve) {
+                if (lastPoint.isOnCurve) {
+                    ctx.lineTo(currentPoint.x, currentPoint.y);
+                }
+                else {
+                    ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, currentPoint.x, currentPoint.y);
+                }
+            }
+            // ctx.lineTo(currentPoint.x, currentPoint.y);
+        }
+    }
+    if (fill) {
+        ctx.fillStyle = color;
+        ctx.fill();
+    }
+    else {
+        ctx.strokeStyle = color;
+        ctx.stroke();
+    }
+    //! 3. Draw debug information
+}
+
+// let font = await (await fetch("CascadiaCode.ttf")).arrayBuffer();
+// let font = await (await fetch("LastResort-Regular.ttf")).arrayBuffer();
+// let font = await (await fetch("UbuntuMono-Regular.ttf")).arrayBuffer();
+// let font = await (await fetch("Arial.ttf")).arrayBuffer();
+// let font = await (await fetch("OpenSans-Regular.ttf")).arrayBuffer();
+// let font = await (await fetch("CourierPrime-Regular.ttf")).arrayBuffer();
+async function main() {
+    let font = await Font.load("fonts/Arial.ttf");
+    window["font"] = font;
+    let canvas = $("#render-target")[0];
+    let ctx = canvas.getContext("2d");
+    let text = $("#text").val();
+    let camX = 0;
+    let camY = 0;
+    function render() {
+        // console.clear();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let posX = 0;
+        let scale = canvas.width / font.stringWidth(text);
+        for (let i = 0; i < text.length; i++) {
+            let data = font.getGlyphData(text[i]);
+            // console.table(data.contours[0]);
+            renderGlyph(data, {
+                context: ctx,
+                x: camX + posX,
+                y: camY,
+                scale,
+                fill: $("#fill")[0].checked,
+                color: "red",
+            });
+            posX += font.stringWidth(text[i]) * scale;
+        }
+    }
+    $("#text").on("keyup", () => {
+        text = $("#text").val();
+        render();
+    });
+    $("#fill").on("click", () => {
+        render();
+    });
+    canvas.addEventListener("mousemove", ev => {
+        if (ev.buttons > 0) {
+            camX += ev.movementX;
+            camY += ev.movementY;
+            render();
+        }
+    });
+    render();
+}
+main();
 //# sourceMappingURL=font.js.map

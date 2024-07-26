@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"lib": [
+			"DOM",
+			"ESNext",
+		],
+		"sourceMap": true,
+		"allowSyntheticDefaultImports": true, //for JQuery
+	},
+	"typeAcquisition": {
+		"enable": true,
+		"include": [
+			"jquery",
+		]
+	}
+}

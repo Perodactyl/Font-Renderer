@@ -1,4 +1,5 @@
 import typescript from '@rollup/plugin-typescript';
+// import terser from '@rollup/plugin-terser';
 
 export default {
 	input: 'src/main.ts',
@@ -7,14 +8,15 @@ export default {
 		format: 'es',
 		sourcemap: true,
 	},
-	plugins: [typescript({
-		compilerOptions: {
-			target: "ESNext",
-			lib: [
-				"DOM",
-				"ESNext",
-			],
-			sourceMap: true,
-		}
-	})],
+	plugins: [
+		typescript(),
+		// nodeResolve(),
+		// commonjs(),
+		// terser({
+		// 	mangle: true,
+		// 	format: {
+		// 		comments: false,
+		// 	}
+		// }),
+	],
 };

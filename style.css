@@ -1,0 +1,65 @@
+body {
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
+	background-color: #112;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#render-target {
+	background-color: black;
+
+	@media (max-aspect-ratio: 1.2) {
+		width: 90%;
+	}
+	@media (min-aspect-ratio: 1.2) {
+		height: 90%;
+	}
+}
+
+#ui {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+
+	font-size: 2rem;
+
+	min-width: 10rem;
+	min-height: 3rem;
+
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+
+	margin-right: 0.5rem;
+	margin-bottom: 0.5rem;
+
+	padding: 1rem;
+	border-radius: 5px;
+
+	background-color: #3333;
+	transition: 50ms background;
+	color: white;
+
+	&:hover, &:focus-within {
+		background-color: #333a;
+		transition: 50ms background;
+	}
+	section {
+		height: 1em;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		
+		input {
+			height: 100%;
+			&[type="checkbox"] {
+				aspect-ratio: 1/1;
+			}
+		}
+	}
+}

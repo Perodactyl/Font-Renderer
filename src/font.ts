@@ -1,12 +1,11 @@
 import { isBitSet, Reader } from "./reader";
 
-type Codepoint = number;
-type GlyphIndex = number;
-type Tag = "cmap" | "glyf" | "head" | "hhea" | "hmtx" | "loca" | "maxp" | "name" | "post" | string;
+export type Codepoint = number;
+export type GlyphIndex = number;
 type Offset = number;
-type FUnits = number;
+export type FUnits = number;
 
-interface GlyphPoint {
+export interface GlyphPoint {
 	x: number,
 	y: number,
 	isEndOfContour: boolean,
@@ -14,9 +13,9 @@ interface GlyphPoint {
 	isImplicit: boolean,
 }
 
-type GlyphContour = GlyphPoint[];
+export type GlyphContour = GlyphPoint[];
 
-interface GlyphData {
+export interface GlyphData {
 	contours: GlyphContour[],
 	minX: number,
 	maxX: number,
@@ -70,10 +69,11 @@ export class Font {
 			let tag = reader.getTag();
 			reader.skipUInt32(); //'Checksum'
 			let offset = reader.getUInt32();
-			reader.skipUInt32; //'Length'
+			reader.skipUInt32(); //'Length'
 
 			this.tables[tag] = offset;
 		}
+		// console.table(this.tables);
 
 		//! 2. Get metadata from the head table
 		reader.seek(this.tables.head);
@@ -99,7 +99,7 @@ export class Font {
 			if(locationTableFormat == "16bit") value = reader.getUInt16();
 			else value = reader.getUInt32();
 
-			this.location.set(i, value);
+			this.location.set(i, this.tables.glyf + value);
 		}
 
 		//! 4. Populate horizontal spacing data
@@ -122,7 +122,7 @@ export class Font {
 		//! 5. Populate cmap.
 		//TODO: Implement format 12
 		reader.seek(this.tables.cmap);
-		reader.skipFixed(); //'Version'
+		reader.skipUInt16(); //'Version'
 
 		let numCmapSubtables = reader.getUInt16();
 		for(let i = 0; i < numCmapSubtables; i++) {
@@ -221,7 +221,6 @@ export class Font {
 			return this.readGlyph(this.findGlyph(0));
 		}
 		//Now in the data section.
-	
 		//EndPtsOfContours[n]
 		let endPointIndices: number[] = [];
 		for(let i = 0; i < contourCount; i++) {
@@ -229,7 +228,7 @@ export class Font {
 		}
 	
 		let numPts = endPointIndices[endPointIndices.length-1] + 1; //The last specified endpoint must be the last point overall.
-		
+		// console.log(`${numPts} points`);
 		//Instructions are used for hinting; we ain't doin' that today. TODO?
 		let instructionLength = reader.getUInt16();
 		reader.skip(instructionLength);
@@ -275,6 +274,7 @@ export class Font {
 				i++;
 			}
 		}
+		// console.log(`${flags.length} flags entries`)
 	
 		//Point location data
 		//Coordinates are relative to previous location. Starts at (0, 0)
@@ -336,8 +336,8 @@ export class Font {
 		let points: GlyphPoint[] = [];
 		for(let i = 0; i < numPts; i++) {
 			points.push({
-				x: xCoords[i],
-				y: yCoords[i],
+				x: xCoords[i] / this.unitsPerEm,
+				y: yCoords[i] / this.unitsPerEm,
 				isEndOfContour: endPointIndices.includes(i),
 				isOnCurve: flags[i].onCurve,
 				isImplicit: false,
@@ -351,6 +351,8 @@ export class Font {
 			for(let point of points) {
 				currentContour.push(point);
 				if(point.isEndOfContour) {
+					//* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
+					currentContour.push(currentContour[0]);
 					contours.push(currentContour);
 					currentContour = [];
 				}
@@ -361,8 +363,8 @@ export class Font {
 		//Add implied points on the curve.
 		for(let contour of contours) {
 			for(let i = 0; i < contour.length; i++) {
-				let current = points[i];
-				let next = points[(i+1) % contour.length];
+				let current = contour[i];
+				let next = contour[(i+1) % contour.length];
 				if(!current.isOnCurve && !next.isOnCurve) {
 					let midX = (current.x + next.x) / 2;
 					let midY = (current.y + next.y) / 2;
@@ -379,27 +381,35 @@ export class Font {
 		
 		let out = {
 			contours,
-			minX: xMin,
-			maxX: xMax,
-			minY: yMin,
-			maxY: yMax,
+			minX: xMin / this.unitsPerEm,
+			maxX: xMax / this.unitsPerEm,
+			minY: yMin / this.unitsPerEm,
+			maxY: yMax / this.unitsPerEm,
 		};
 	
 		return out;
 	}
 
-	stringWidth(text: string) { //Calculates width in FUnits. Text should not include newlines (they will be treated as an unknown glyph);
+	//Shorthand for readGlyph with some other lookups inbetween.
+	getGlyphData(character: string | Codepoint) {
+		let codepoint = typeof character == "string" ? character.codePointAt(0) : character;
+		let glyphNumber = this.cmap.get(codepoint) ?? 0;
+		let glyphOffset = this.location.get(glyphNumber);
+		return this.readGlyph(glyphOffset);
+	}
+
+	stringWidth(text: string) { //Calculates width in Ems.
 		let sum = 0;
 		for(let i = 0; i < text.length; i++) {
 			let codepoint = text.codePointAt(i) as Codepoint;
 			if(codepoint == 32) {
-				sum += this.unitsPerEm / 2;
+				sum += 0.5;
 			} else if(this.cmap.has(codepoint)) {
 				let glyphId = this.cmap.get(codepoint);
 				if(this.spacing.has(codepoint))
-					sum += this.spacing.get(this.cmap.get(codepoint) as GlyphIndex) as FUnits;
-				else sum += this.spacing.get(0) as FUnits;
-			} else sum += this.spacing.get(0) as FUnits;
+					sum += this.spacing.get(this.cmap.get(codepoint) as GlyphIndex) / this.unitsPerEm;
+				else sum += this.spacing.get(0) / this.unitsPerEm;
+			} else sum += this.spacing.get(0) / this.unitsPerEm;
 		}
 	
 		return sum;
