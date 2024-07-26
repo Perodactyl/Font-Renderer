@@ -760,8 +760,8 @@ async function main() {
             let rect = canvas.getBoundingClientRect();
             let moveX = ev.movementX * (canvas.width / rect.width);
             let moveY = ev.movementY * (canvas.height / rect.height);
-            camX += moveX * camScale;
-            camY += moveY * camScale;
+            camX += moveX;
+            camY += moveY;
             render();
         }
     });

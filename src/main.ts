@@ -164,8 +164,8 @@ async function main() {
 			let moveX = ev.movementX * (canvas.width / rect.width);
 			let moveY = ev.movementY * (canvas.height / rect.height);
 
-			camX += moveX * camScale;
-			camY += moveY * camScale;
+			camX += moveX;
+			camY += moveY;
 			render();
 		}
 	});
@@ -200,8 +200,8 @@ async function main() {
 	//* Phone gestures
 	canvas.addEventListener("touchmove", ev=>{ //TODO This is mostly untested.
 		ev.preventDefault();
-		let x;
-		let y;
+		let x: number;
+		let y: number;
 		if(ev.targetTouches.length == 1) { //Motion
 			x = ev.targetTouches.item(0).clientX;
 			y = ev.targetTouches.item(0).clientY;
