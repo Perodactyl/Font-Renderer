@@ -55,8 +55,10 @@ body {
 		justify-content: space-between;
 		align-items: center;
 		
-		input {
+		input, select {
 			height: 100%;
+			margin-left: 2rem;
+			margin-right: 2rem;
 			&[type="checkbox"] {
 				aspect-ratio: 1/1;
 			}

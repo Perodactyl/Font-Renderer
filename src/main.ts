@@ -9,6 +9,12 @@ import { renderGlyph, RenderSettings } from "./render";
 // let font = await (await fetch("CourierPrime-Regular.ttf")).arrayBuffer();
 
 async function main() {
+	let fontList = (await (await fetch("fonts/index")).text()).split("\n");
+	for(let fontName of fontList) {
+		console.log(fontName)
+		$("#font").append($(`<option value="${"fonts/"+fontName}">${fontName}</option>"`));
+	}
+
 	let font = await Font.load("fonts/Arial.ttf");
 	window["font"] = font;
 
@@ -19,12 +25,13 @@ async function main() {
 
 	let camX = 0;
 	let camY = 0;
+	let camScale = 1;
 
 	function render() {
 		// console.clear();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		let posX = 0;
-		let scale = canvas.width / font.stringWidth(text);
+		let scale = canvas.width / font.stringWidth(text) * camScale;
 		for(let i = 0; i < text.length; i++) {
 			let data = font.getGlyphData(text[i]);
 			// console.table(data.contours[0]);
@@ -46,7 +53,12 @@ async function main() {
 	});
 	$("#fill").on("click", ()=>{
 		render();
-	})
+	});
+	$("#font").on("change", async ev=>{
+		font = await Font.load(<string>$("#font").val());
+		window["font"] = font;
+		render();
+	});
 
 	canvas.addEventListener("mousemove", ev=>{
 		if(ev.buttons > 0) {
@@ -54,6 +66,10 @@ async function main() {
 			camY += ev.movementY;
 			render();
 		}
+	});
+	canvas.addEventListener("wheel", ev=>{
+		camScale -= ev.deltaY / 1000;
+		render();
 	});
 
 	render();
