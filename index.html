@@ -9,13 +9,54 @@
 	<script defer src="dist/font.js"></script>
 </head>
 <body>
-	<canvas id="render-target" width="1200" height="1000"></canvas>
-	<div id="ui">
-		<section><label for="text">Text:</label> <input id="text" placeholder="Write Something..." /></section>
-		<section><label for="text">Color:</label> <input id="color" type="color" /></section>
-		<section><label for="text">Debug Lines</label> <input id="debug" type="checkbox" /></section>
-		<section><label for="fill">Fill</label> <input id="fill" type="checkbox" checked /></section>
-		<section><label for="font">Font</label> <select id="font"></select></section>
+	<canvas id="render-target" width="1000" height="1000"></canvas>
+	<div id="ui-components">
+		<div id="ui" class="ui bottom right">
+			<h3>Config</h3>
+			<section>
+				<label for="text">Text:</label>
+				<input id="text" placeholder="Write Something..." />
+			</section>
+			<section>
+				<label for="color">Color:</label>
+				<input id="color" type="color" />
+			</section>
+			<section>
+				<label for="debug">Debug</label>
+				<input id="debug" type="checkbox" />
+			</section>
+			<section>
+				<label for="fill">Fill</label>
+				<input id="fill" type="checkbox" checked />
+			</section>
+			<section id="lineThicknessSetting">
+				<label for="lineThickness">Thickness:</label>
+				<input value="1.1" id="lineThickness" min="0" max="30" step="0.1" type="range" />
+			</section>
+			<section>
+				<label for="font">Font:</label><select id="font"></select> <!-- This box is dynamically populated. could be better? -->
+			</section>
+		</div>
+		<div id="debugUI" class="ui bottom left" hidden>
+			<h3>Debug</h3>
+			<section>
+				<label for="text">Size:</label>
+				<input value="5" id="debugScale" min="3" max="15" step="0.5" type="range" />
+			</section>
+			<section>
+				<label for="features">Features:</label>
+				<select id="features">
+					<option value="">Regular</option>
+					<option value="no-bezier">Straight lines between points</option>
+					<option value="no-bezier,mask-implicit">Remove implicit points</option>
+					<option value="mask-implicit,mask-off-curve">Remove control points</option>
+				</select>
+			</section>
+			<section id="contoursSetting">
+				<label for="features">Contours:</label>
+				<select id="contours"></select> <!-- Populated per-glyph. -->
+			</section>
+		</div>
 	</div>
 </body>
 </html>

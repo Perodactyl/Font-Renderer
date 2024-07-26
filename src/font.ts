@@ -6,6 +6,7 @@ type Offset = number;
 export type FUnits = number;
 
 export interface GlyphPoint {
+	isReturnPoint: any;
 	x: number,
 	y: number,
 	isEndOfContour: boolean,
@@ -341,6 +342,7 @@ export class Font {
 				isEndOfContour: endPointIndices.includes(i),
 				isOnCurve: flags[i].onCurve,
 				isImplicit: false,
+				isReturnPoint: false,
 			});
 		}
 
@@ -352,7 +354,10 @@ export class Font {
 				currentContour.push(point);
 				if(point.isEndOfContour) {
 					//* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
-					currentContour.push(currentContour[0]);
+					currentContour.push({
+						...currentContour[0],
+						isReturnPoint: true,
+					});
 					contours.push(currentContour);
 					currentContour = [];
 				}
@@ -374,6 +379,7 @@ export class Font {
 						isEndOfContour: false,
 						isOnCurve: true,
 						isImplicit: true,
+						isReturnPoint: false,
 					});
 				}
 			}

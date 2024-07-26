@@ -369,6 +369,7 @@ class Font {
                 isEndOfContour: endPointIndices.includes(i),
                 isOnCurve: flags[i].onCurve,
                 isImplicit: false,
+                isReturnPoint: false,
             });
         }
         //Convert points to contours.
@@ -379,7 +380,10 @@ class Font {
                 currentContour.push(point);
                 if (point.isEndOfContour) {
                     //* Bonus: Add the starting point back in, at the end. This makes a loop which is more likely to work.
-                    currentContour.push(currentContour[0]);
+                    currentContour.push({
+                        ...currentContour[0],
+                        isReturnPoint: true,
+                    });
                     contours.push(currentContour);
                     currentContour = [];
                 }
@@ -400,6 +404,7 @@ class Font {
                         isEndOfContour: false,
                         isOnCurve: true,
                         isImplicit: true,
+                        isReturnPoint: false,
                     });
                 }
             }
@@ -446,24 +451,30 @@ class Font {
     }
 }
 
-function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, color }) {
+function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale, color, extra, contours: contoursShown }) {
     //! 1. Transform the glyph from Em space to render space
     let transformerX = (pt) => pt * scale + x;
     let transformerY = (pt) => (data.maxY - pt) * scale + y; //Em space is flipped vertically (the math way instead of the code way)
     let glyph = {
         contours: data.contours.map(c => c.map(pt => ({
+            ...pt,
             x: transformerX(pt.x),
             y: transformerY(pt.y),
-            isOnCurve: pt.isOnCurve,
-            isImplicit: pt.isImplicit,
-            isEndOfContour: pt.isEndOfContour,
         }))),
         minX: transformerX(data.minX),
         maxX: transformerX(data.maxX),
         minY: transformerY(data.minY),
         maxY: transformerY(data.maxY),
     };
+    if (contoursShown && contoursShown != "all") {
+        let index = Number(contoursShown);
+        glyph.contours = [glyph.contours[index]];
+    }
     // console.table(glyph.contours[0])
+    if (extra.includes("mask-implicit"))
+        glyph.contours = glyph.contours.map(contour => contour.filter(pt => !pt.isImplicit));
+    if (extra.includes("mask-off-curve"))
+        glyph.contours = glyph.contours.map(contour => contour.filter(pt => pt.isOnCurve));
     //! 2. Draw the glyph data
     ctx.beginPath();
     for (let contour of glyph.contours) {
@@ -480,7 +491,10 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, color }) {
         for (let i = 0; i < contour.length; i++) {
             let currentPoint = contour[(start + i) % contour.length];
             let lastPoint = contour[(start + i) == 0 ? contour.length - 1 : start + i - 1];
-            if (currentPoint.isOnCurve) {
+            if (extra.includes("no-bezier")) {
+                ctx.lineTo(currentPoint.x, currentPoint.y);
+            }
+            else if (currentPoint.isOnCurve) {
                 if (lastPoint.isOnCurve) {
                     ctx.lineTo(currentPoint.x, currentPoint.y);
                 }
@@ -488,7 +502,6 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, color }) {
                     ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, currentPoint.x, currentPoint.y);
                 }
             }
-            // ctx.lineTo(currentPoint.x, currentPoint.y);
         }
     }
     if (fill) {
@@ -502,10 +515,34 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, color }) {
     //! 3. Draw debug information
     if (debug) {
         function line(x1, y1, x2, y2) {
+            let oldWidth = ctx.lineWidth;
+            ctx.lineWidth = debugScale / 2;
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
             ctx.stroke();
+            ctx.lineWidth = oldWidth;
+        }
+        for (let contour of glyph.contours) {
+            for (let i = 0; i < contour.length; i++) {
+                let current = contour[i];
+                contour[(i + 1) % contour.length];
+                contour[i == 0 ? contour.length - 1 : i - 1];
+                if (current.isImplicit) {
+                    ctx.fillStyle = "#F00";
+                    ctx.strokeStyle = "#F00";
+                    ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+                }
+                else if (current.isOnCurve) {
+                    ctx.fillStyle = current.isEndOfContour ? "#6FA" : "#0F0";
+                    ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+                }
+                else {
+                    ctx.fillStyle = "#00F";
+                    ctx.fillRect(current.x - debugScale, current.y - debugScale, debugScale * 2, debugScale * 2);
+                    ctx.strokeStyle = "#CCCC";
+                }
+            }
         }
         for (let contour of glyph.contours) {
             for (let i = 0; i < contour.length; i++) {
@@ -513,22 +550,38 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, color }) {
                 let next = contour[(i + 1) % contour.length];
                 let prev = contour[i == 0 ? contour.length - 1 : i - 1];
                 if (current.isImplicit) {
-                    ctx.fillStyle = "#F00";
                     ctx.strokeStyle = "#F00";
-                    ctx.fillRect(current.x - 5, current.y - 5, 10, 10);
                     line(current.x, current.y, next.x, next.y);
                     line(current.x, current.y, prev.x, prev.y);
                 }
-                else if (current.isOnCurve) {
-                    ctx.fillStyle = current.isEndOfContour ? "#6FA" : "#0F0";
-                    ctx.fillRect(current.x - 5, current.y - 5, 10, 10);
-                }
+                else if (current.isOnCurve) ;
                 else {
-                    ctx.fillStyle = "#00F";
-                    ctx.fillRect(current.x - 5, current.y - 5, 10, 10);
                     ctx.strokeStyle = "#CCCC";
-                    line(current.x, current.y, next.x, next.y);
-                    line(current.x, current.y, prev.x, prev.y);
+                    if (!next.isImplicit)
+                        line(current.x, current.y, next.x, next.y);
+                    if (!prev.isImplicit)
+                        line(current.x, current.y, prev.x, prev.y);
+                }
+            }
+        }
+        for (let contour of glyph.contours) {
+            for (let i = 0; i < contour.length; i++) {
+                let current = contour[i];
+                contour[(i + 1) % contour.length];
+                contour[i == 0 ? contour.length - 1 : i - 1];
+                if (!current.isReturnPoint) { //Well, this is ironic...
+                    let text = (i + 1).toString();
+                    if (i == 0) {
+                        text = `${i + 1}, ${contour.length}`;
+                    }
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "bottom";
+                    ctx.font = `${debugScale * 4}px Arial`;
+                    ctx.fillStyle = "#333";
+                    let bounds = ctx.measureText(text);
+                    ctx.fillRect(current.x + 8, current.y - 8 - bounds.fontBoundingBoxAscent, bounds.actualBoundingBoxRight + 2, bounds.fontBoundingBoxAscent);
+                    ctx.fillStyle = "#6FF";
+                    ctx.fillText(text, current.x + 8, current.y - 8);
                 }
             }
         }
@@ -550,6 +603,7 @@ async function main() {
     let camX = 0;
     let camY = 0;
     let camScale = 1;
+    let shouldApplyContours = false;
     function render() {
         // console.clear();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -562,6 +616,9 @@ async function main() {
             }
             let data = font.getGlyphData(text[i]);
             // console.table(data.contours[0]);
+            ctx.lineWidth = Number($("#lineThickness").val());
+            ctx.lineJoin = "bevel";
+            ctx.lineCap = "round";
             renderGlyph(data, {
                 context: ctx,
                 x: camX + posX,
@@ -569,13 +626,46 @@ async function main() {
                 scale,
                 fill: $("#fill")[0].checked,
                 debug: $("#debug")[0].checked,
+                debugScale: Number($("#debugScale").val()),
+                extra: $("#features").val().split(","),
+                contours: shouldApplyContours ? $("#contours").val() : null,
                 color,
             });
             posX += font.stringWidth(text[i]) * scale;
         }
     }
+    function updateContourSelector() {
+        if (text.length == 1) {
+            let contourCount = font.getGlyphData(text[0]).contours.length;
+            let origValue = $("#contours").val();
+            $("#contours").children().remove();
+            $("#contours").append('<option value="all">All</option>');
+            $("#contours").append('<option value="0">Primary</option>');
+            if (contourCount == 1) {
+                $("#contours").val("all");
+                $("#contoursSetting").hide();
+                shouldApplyContours = false;
+                return;
+            }
+            shouldApplyContours = true;
+            for (let i = 1; i < contourCount; i++) {
+                $("#contours").append(`<option value="${i}">Contour #${i}</option>`);
+            }
+            if (origValue) {
+                $("#contours").val(origValue);
+            }
+            $("#contoursSetting").show();
+        }
+        else {
+            shouldApplyContours = false;
+            $("#contours").val("all");
+            $("#contoursSetting").hide();
+        }
+    }
+    updateContourSelector();
     $("#text").on("keyup", () => {
         text = $("#text").val();
+        updateContourSelector();
         render();
     });
     $("#color").on("change", () => {
@@ -583,14 +673,50 @@ async function main() {
         render();
     });
     $("#fill").on("click", () => {
+        if ($("#fill")[0].checked) {
+            $("#lineThicknessSetting").hide();
+        }
+        else {
+            $("#lineThicknessSetting").show();
+        }
         render();
     });
+    if ($("#fill")[0].checked) { //Gotta remember: the document may or may not have preset values from past usage of the page
+        $("#lineThicknessSetting").hide();
+    }
+    else {
+        $("#lineThicknessSetting").show();
+    }
     $("#debug").on("click", () => {
+        if ($("#debug")[0].checked) {
+            $("#debugUI").show();
+        }
+        else {
+            $("#debugUI").hide();
+        }
         render();
     });
-    $("#font").on("change", async (ev) => {
+    if ($("#debug")[0].checked) {
+        $("#debugUI").show();
+    }
+    else {
+        $("#debugUI").hide();
+    }
+    $("#debugScale").on("input", () => {
+        render();
+    });
+    $("#lineThickness").on("input", () => {
+        render();
+    });
+    $("#font").on("change", async () => {
         font = await Font.load($("#font").val());
         window["font"] = font;
+        render();
+    });
+    $("#features").on("change", () => {
+        render();
+    });
+    $("#contours").on("change", () => {
         render();
     });
     canvas.addEventListener("mousemove", ev => {
@@ -602,7 +728,7 @@ async function main() {
     });
     canvas.addEventListener("wheel", ev => {
         camScale -= ev.deltaY / 1000;
-        camScale = Math.min(Math.max(camScale, 0.3), 5.0);
+        camScale = Math.min(Math.max(camScale, 0.1), 5.0);
         //TODO move the camera toward or away from the mouse
         // let rect = canvas.getBoundingClientRect();
         // let relX = ev.clientX - (rect.left + rect.width / 2);
@@ -610,6 +736,59 @@ async function main() {
         // camX += relX / 2;
         // camY += relY / 2;
         render();
+    });
+    let lastTouchX = null;
+    let lastTouchY = null;
+    let lastTouchDistance = null;
+    //* Phone gestures
+    canvas.addEventListener("touchmove", ev => {
+        ev.preventDefault();
+        let x;
+        let y;
+        if (ev.targetTouches.length == 1) { //Motion
+            x = ev.targetTouches.item(0).clientX;
+            y = ev.targetTouches.item(0).clientY;
+        }
+        else if (ev.targetTouches.length == 2) { //Zoom
+            let touch1 = ev.targetTouches.item(0);
+            let touch2 = ev.targetTouches.item(1);
+            let x1 = touch1.clientX;
+            let y1 = touch1.clientY;
+            let x2 = touch2.clientX;
+            let y2 = touch2.clientY;
+            x = (x1 + x2) / 2;
+            y = (y1 + y2) / 2;
+            let pointingX = x2 - x1;
+            let pointingY = y2 - y1;
+            let distance = Math.sqrt(pointingX ** 2 + pointingY ** 2);
+            if (lastTouchDistance != null) {
+                camScale -= distance / 100;
+            }
+            lastTouchDistance = distance;
+        }
+        if (x != null && y != null) {
+            if (lastTouchX != null && lastTouchY != null) {
+                camX += x - lastTouchX;
+                camY += y - lastTouchY;
+                render();
+            }
+            lastTouchX = x;
+            lastTouchY = y;
+        }
+    });
+    canvas.addEventListener("touchstart", ev => {
+        ev.preventDefault();
+        if (ev.targetTouches.length == 1) ;
+    });
+    canvas.addEventListener("touchend", ev => {
+        ev.preventDefault();
+        if (ev.targetTouches.length == 0) {
+            lastTouchX = null;
+            lastTouchY = null;
+        }
+        if (ev.targetTouches.length < 2) {
+            lastTouchDistance = null;
+        }
     });
     render();
 }
