@@ -34,7 +34,16 @@
 				<input value="1" id="lineThickness" min="1" max="50" step="0.1" type="range" />
 			</section>
 			<section>
-				<label for="font">Font:</label><select id="font"></select> <!-- This box is dynamically populated. could be better? -->
+				<label for="font">Font:</label>
+				<select id="font" title="None of these are guaranteed to work.">
+					<option value="fonts/Arial.ttf" selected>Arial</option>
+					<option value="fonts/CascadiaCode.ttf">Cascadia Code</option>
+					<option value="fonts/CourierPrime-Regular.ttf">Courier Prime</option>
+					<option value="fonts/FiraCodeNerdFontMono-Regular.ttf">Fira Code (NF)</option>
+					<option value="fonts/UbuntoMono-Regular.ttf">Ubuntu Mono</option>
+					<option value="fonts/OpenSans-Regular.ttf">Open Sans</option>
+					<option value="fonts/ComicSans.ttf">Comic Sans</option>
+				</select>
 			</section>
 		</div>
 		<div id="debugUI" class="ui bottom left" hidden>

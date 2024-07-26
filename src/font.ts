@@ -293,13 +293,13 @@ export class Font {
 		let curX = 0;
 		let curY = 0;
 
-		console.table(flags);
+		// console.table(flags);
 	
 		for(let i = 0; i < numPts; i++) {
 			if(!flags[i].xSame) {
 				if(flags[i].xShort) {
 					let value = reader.getUInt8();
-					console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
+					// console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
 					if(flags[i].xPositive) {
 						curX += value;
 						// lastDeltaX = value;
@@ -309,11 +309,11 @@ export class Font {
 					}
 				} else {
 					let coord = reader.getInt16();
-					console.log(`Point ${i} X is long (= ${coord})`);
+					// console.log(`Point ${i} X is long (= ${coord})`);
 					curX += coord;
 				}
 			} else {
-				console.log(`Point ${i} X is same`);
+				// console.log(`Point ${i} X is same`);
 				// curX += lastDeltaX;
 			}
 			xCoords.push(curX);
@@ -323,7 +323,7 @@ export class Font {
 			if(!flags[i].ySame) {
 				if(flags[i].yShort) {
 					let value = reader.getUInt8();
-					console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
+					// console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
 					if(flags[i].yPositive) {
 						curY += value;
 						// lastDeltaY = value;
@@ -333,11 +333,11 @@ export class Font {
 					}
 				} else {
 					let coord = reader.getInt16();
-					console.log(`Point ${i} Y is long (= ${coord})`);
+					// console.log(`Point ${i} Y is long (= ${coord})`);
 					curY += coord;
 				}
 			} else {
-				console.log(`Point ${i} Y is same`);
+				// console.log(`Point ${i} Y is same`);
 				// curY += lastDeltaY;
 			}
 			yCoords.push(curY);

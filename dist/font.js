@@ -324,12 +324,12 @@ class Font {
         // let lastDeltaY = 0;
         let curX = 0;
         let curY = 0;
-        console.table(flags);
+        // console.table(flags);
         for (let i = 0; i < numPts; i++) {
             if (!flags[i].xSame) {
                 if (flags[i].xShort) {
                     let value = reader.getUInt8();
-                    console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
+                    // console.log(`Point ${i} X is short; it is ${flags[i].xPositive ? "positive" : "negative"}. (= ${value}). Now at ${curX}`);
                     if (flags[i].xPositive) {
                         curX += value;
                         // lastDeltaX = value;
@@ -341,13 +341,9 @@ class Font {
                 }
                 else {
                     let coord = reader.getInt16();
-                    console.log(`Point ${i} X is long (= ${coord})`);
+                    // console.log(`Point ${i} X is long (= ${coord})`);
                     curX += coord;
                 }
-            }
-            else {
-                console.log(`Point ${i} X is same`);
-                // curX += lastDeltaX;
             }
             xCoords.push(curX);
         }
@@ -355,7 +351,7 @@ class Font {
             if (!flags[i].ySame) {
                 if (flags[i].yShort) {
                     let value = reader.getUInt8();
-                    console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
+                    // console.log(`Point ${i} Y is short; it is ${flags[i].yPositive ? "positive" : "negative"}. (= ${value}). Now at ${curY}`);
                     if (flags[i].yPositive) {
                         curY += value;
                         // lastDeltaY = value;
@@ -367,13 +363,9 @@ class Font {
                 }
                 else {
                     let coord = reader.getInt16();
-                    console.log(`Point ${i} Y is long (= ${coord})`);
+                    // console.log(`Point ${i} Y is long (= ${coord})`);
                     curY += coord;
                 }
-            }
-            else {
-                console.log(`Point ${i} Y is same`);
-                // curY += lastDeltaY;
             }
             yCoords.push(curY);
         }
@@ -607,13 +599,24 @@ function renderGlyph(data, { context: ctx, x, y, scale, fill, debug, debugScale,
 }
 
 async function main() {
-    let fontList = (await (await fetch("fonts/index")).text()).split("\n");
-    for (let fontName of fontList) {
-        console.log(fontName);
-        $("#font").append($(`<option value="${"fonts/" + fontName}">${fontName}</option>"`));
+    let loadedFonts = new Map();
+    let font;
+    async function updateFont() {
+        let value = $("#font").val();
+        if (loadedFonts.has(value)) {
+            font = loadedFonts.get(value);
+        }
+        else {
+            font = await Font.load(value);
+            loadedFonts.set(value, font);
+        }
+        window["font"] = font;
     }
-    let font = await Font.load("fonts/Arial.ttf");
-    window["font"] = font;
+    await updateFont();
+    $("#font").on("change", () => {
+        updateFont();
+        render(true);
+    });
     let canvas = $("#render-target")[0];
     let ctx = canvas.getContext("2d");
     let text = $("#text").val();
@@ -624,7 +627,18 @@ async function main() {
     let zoomMin = 0.1;
     let zoomMax = 5.0;
     let shouldApplyContours = false;
-    function render() {
+    let lastRender = 0;
+    let isAwaitingRender = false;
+    function render(force) {
+        if (!force && Date.now() - lastRender < 10) { //Debouncing
+            if (!isAwaitingRender) {
+                setTimeout(render, 15);
+            }
+            isAwaitingRender = true;
+            return;
+        }
+        lastRender = Date.now();
+        isAwaitingRender = false;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let posX = 0;
         let scale = canvas.width * camScale * Number($("#extraZoomOut").val());
@@ -713,10 +727,10 @@ async function main() {
     });
     function updateFillInput() {
         if ($("#fill")[0].checked) {
-            $("#lineThicknessSetting").hide();
+            $("#lineThicknessSetting").css("visibility", "hidden");
         }
         else {
-            $("#lineThicknessSetting").show();
+            $("#lineThicknessSetting").css("visibility", "visible");
         }
         render();
     }
@@ -724,11 +738,6 @@ async function main() {
     updateFillInput();
     $("#debug").on("click", () => {
         updateDebugUI();
-        render();
-    });
-    $("#font").on("change", async () => {
-        font = await Font.load($("#font").val());
-        window["font"] = font;
         render();
     });
     let uiInputs = $(".ui").children("section").children("input, select");
@@ -823,7 +832,7 @@ async function main() {
             lastTouchDistance = null;
         }
     });
-    render();
+    render(true);
 }
 main();
 //# sourceMappingURL=font.js.map

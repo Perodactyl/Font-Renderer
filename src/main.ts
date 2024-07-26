@@ -2,14 +2,24 @@ import { Font } from "./font";
 import { renderGlyph, RenderSettings } from "./render";
 
 async function main() {
-	let fontList = (await (await fetch("fonts/index")).text()).split("\n");
-	for(let fontName of fontList) {
-		console.log(fontName)
-		$("#font").append($(`<option value="${"fonts/"+fontName}">${fontName}</option>"`));
+	let loadedFonts = new Map();
+	let font: Font;
+	async function updateFont() {
+		let value = <string>$("#font").val();
+		if(loadedFonts.has(value)) {
+			font = loadedFonts.get(value);
+		} else {
+			font = await Font.load(value);
+			loadedFonts.set(value, font);
+		}
+		window["font"] = font;
 	}
+	await updateFont();
+	$("#font").on("change", ()=>{
+		updateFont();
+		render(true);
+	});
 
-	let font = await Font.load("fonts/Arial.ttf");
-	window["font"] = font;
 
 	let canvas = <HTMLCanvasElement>$("#render-target")[0];
 	let ctx = canvas.getContext("2d");
@@ -28,7 +38,19 @@ async function main() {
 
 	let debugDraw = [];
 
-	function render() {
+	let lastRender = 0;
+	let isAwaitingRender = false;
+	function render(force?: boolean) {
+		if(!force && Date.now() - lastRender < 10) { //Debouncing
+			if(!isAwaitingRender) {
+				setTimeout(render, 15);
+			}
+			isAwaitingRender = true;
+			return;
+		}
+		lastRender = Date.now();
+		isAwaitingRender = false;
+
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		let posX = 0;
 		let scale = canvas.width * camScale * Number($("#extraZoomOut").val());
@@ -119,9 +141,9 @@ async function main() {
 
 	function updateFillInput(){
 		if((<HTMLInputElement>$("#fill")[0]).checked) {
-			$("#lineThicknessSetting").hide();
+			$("#lineThicknessSetting").css("visibility", "hidden");
 		} else {
-			$("#lineThicknessSetting").show();
+			$("#lineThicknessSetting").css("visibility", "visible");
 		}
 		render();
 	}
@@ -131,11 +153,7 @@ async function main() {
 		updateDebugUI();
 		render();
 	});
-	$("#font").on("change", async ()=>{
-		font = await Font.load(<string>$("#font").val());
-		window["font"] = font;
-		render();
-	});
+	
 	let uiInputs = $(".ui").children("section").children("input, select");
 	uiInputs.filter('input[type=range]').on("input", ()=>render());
 	uiInputs.filter('select').on("change", ()=>render());
@@ -245,7 +263,7 @@ async function main() {
 		}
 	});
 
-	render();
+	render(true);
 }
 
 main();
