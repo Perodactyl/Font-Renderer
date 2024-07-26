@@ -414,6 +414,7 @@ export class Font {
 		let codepoint = typeof character == "string" ? character.codePointAt(0) : character;
 		let glyphNumber = this.cmap.get(codepoint) ?? 0;
 		let glyphOffset = this.location.get(glyphNumber);
+		console.log(codepoint, glyphNumber, glyphOffset);
 		return this.readGlyph(glyphOffset);
 	}
 

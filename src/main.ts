@@ -24,8 +24,51 @@ async function main() {
 	let canvas = <HTMLCanvasElement>$("#render-target")[0];
 	let ctx = canvas.getContext("2d");
 
-	let text = <string>$("#text").val();
-	let color = <string>$("#color").val();
+	let codepoints:number[] = [];
+	let glyphIDs:number[] = [];
+	let glyphOffsets:number[] = [];
+	function updateGlyphOffsets() {
+		let text = <string>$("#text").val();
+		let inputMode = <string>$("#inputMode").val();
+		codepoints = [];
+		glyphIDs = [];
+		glyphOffsets = [];
+		if(inputMode == "codepoints") {
+			codepoints = text.split(",").map(num=>Number(num));
+		} else if(inputMode == "glyphIDs") {
+			glyphIDs = text.split(",").map(num=>Number(num));
+		} else if(inputMode == "glyphOffsets") {
+			glyphOffsets = text.split(",").map(num=>Number(num));
+		} else {
+			codepoints = text.split("").map(char=>char.codePointAt(0));
+		}
+		for(let i = 0; i < codepoints.length; i++) {
+			glyphIDs.push(font.cmap.get(codepoints[i]) ?? 0);
+		}
+		for(let i = 0; i < glyphIDs.length; i++) {
+			glyphOffsets.push(font.location.get(glyphIDs[i]));
+		}
+		if(glyphOffsets.length == 1) {
+			//Reverse lookup, if possible
+			if(glyphIDs.length == 0) {
+				for(let [glyphID, offset] of Object.entries(font.cmap)) {
+					if(offset == glyphOffsets[0]) {
+						glyphIDs.push(Number(glyphID));
+						break;
+					}
+				}
+			}
+			if(codepoints.length == 0) {
+				for(let [codepoint, glyphID] of Object.entries(font.cmap)) {
+					if(glyphID == glyphIDs[0]) {
+						codepoints.push(Number(codepoint));
+						break;
+					}
+				}
+			}
+		}
+	}
+	updateGlyphOffsets();
 
 	let camX = 0;
 	let camY = 0;
@@ -35,8 +78,6 @@ async function main() {
 	let zoomMax = 5.0;
 
 	let shouldApplyContours = false;
-
-	let debugDraw = [];
 
 	let lastRender = 0;
 	let isAwaitingRender = false;
@@ -55,12 +96,13 @@ async function main() {
 		let posX = 0;
 		let scale = canvas.width * camScale * Number($("#extraZoomOut").val());
 		let baseline = font.getGlyphData("M").maxY;
-		for(let i = 0; i < text.length; i++) {
-			if(text[i].match(/\s/)) {
+
+		for(let i = 0; i < glyphOffsets.length; i++) {
+			if(codepoints.length > i && String.fromCodePoint(codepoints[i]).match(/\s/)) {
 				posX += 0.5 * scale;
 				continue;
 			}
-			let data = font.getGlyphData(text[i]);
+			let data = font.readGlyph(glyphOffsets[i]);
 			// console.table(data.contours[0]);
 			ctx.lineWidth = Number($("#lineThickness").val()) * camScale;
 			ctx.lineJoin = "round";
@@ -75,25 +117,30 @@ async function main() {
 				debugScale: Number($("#debugScale").val()),
 				extra: (<any>$("#features").val()).split(","),
 				contours: shouldApplyContours ? <string>$("#contours").val() : null,
-				color,
+				color: <string>$("#color").val(),
 			});
-			posX += font.stringWidth(text[i]) * scale;
+			if(codepoints.length > i) {
+				posX += font.stringWidth(String.fromCodePoint(codepoints[i])) * scale;
+			} else {
+				posX += font.stringWidth("M") * scale;
+			}
 		}
 	}
 	function updateDebugUI() {
-		if(text.length == 1) {
-			let data = font.getGlyphData(text[0]);
+		if(glyphOffsets.length == 1) {
+			let data = font.getGlyphData(glyphOffsets[0]);
 			let contourCount = data.contours.length;
 			let contourLengths = data.contours.map(c=>c.length)
 			let pointSummary = contourCount == 1 ? data.contours[0].length.toString() : contourLengths.join("+")+"="+contourLengths.reduce((a,b)=>a+b,0);
-			let codepoint = text.codePointAt(0);
-			let glyphId = font.cmap.get(codepoint);
-			let glyphOffset = font.location.get(glyphId);
+			
+			let codepoint = codepoints.length > 0 ? codepoints[0] : "N/A";
+			let glyphId = glyphIDs.length > 0 ? glyphIDs[0] : "N/A";
+			let glyphOffset = glyphOffsets[0];
 
 			$("#contourCount").text(contourCount);
 			$("#pointCount").text(pointSummary);
-			$("#glyphCodepoint").text(`U+${codepoint.toString(16).padStart(4, "0")} (dec ${codepoint})`);
-			$("#glyphID").text(glyphId);
+			$("#glyphCodepoint").text(typeof codepoint == "number" ? `U+${codepoint.toString(16).padStart(4, "0")} (dec ${codepoint})` : codepoint);
+			$("#glyphID").text(glyphId ?? "Missing glyph (0)");
 			$("#glyphOffset").text(`${glyphOffset.toString(16).padStart(8, "0").replace(/(....)(....)/, "$1 $2")} (dec ${glyphOffset})`);
 			$("#glyphInfo").show();
 
@@ -108,18 +155,18 @@ async function main() {
 				return;
 			}
 			shouldApplyContours = true;
-			for(let i = 1; i < contourCount; i++) {
+			for(let i = 1; i <= contourCount; i++) {
 				$("#contours").append(`<option value="${i}">Contour #${i}</option>`);
 			}
 			if(pastContourSetting) {
 				$("#contours").val(pastContourSetting);
 			}
-			$("#contoursSetting").show();
+			$("#contoursSetting").css("visibility", "visible");
 		} else {
 			shouldApplyContours = false;
 			$("#glyphInfo").hide();
 			$("#contours").val("all");
-			$("#contoursSetting").hide();
+			$("#contoursSetting").css("visibility", "hidden");
 		}
 		if((<HTMLInputElement>$("#debug")[0]).checked) {
 			$("#debugUI").show();
@@ -130,12 +177,11 @@ async function main() {
 	updateDebugUI();
 
 	$("#text").on("keyup", ()=>{
-		text = <string>$("#text").val();
+		updateGlyphOffsets();
 		updateDebugUI();
 		render();
 	});
 	$("#color").on("change", ()=>{
-		color = <string>$("#color").val();
 		render();
 	});
 
@@ -150,6 +196,11 @@ async function main() {
 	$("#fill").on("click", updateFillInput);
 	updateFillInput();
 	$("#debug").on("click", ()=>{
+		updateDebugUI();
+		render();
+	});
+	$("#inputMode").on("change", ()=>{
+		updateGlyphOffsets();
 		updateDebugUI();
 		render();
 	});

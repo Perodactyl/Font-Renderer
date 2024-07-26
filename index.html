@@ -14,7 +14,7 @@
 		<div id="ui" class="ui bottom right">
 			<h3>Config</h3>
 			<section>
-				<label for="text">Text:</label>
+				<label for="text">Input:</label>
 				<input id="text" placeholder="Write Something..." value="Hello, World!"/>
 			</section>
 			<section>
@@ -69,6 +69,7 @@
 					<label for="contourCount">Glyph Offset:</label>
 					<span id="glyphOffset"></span>
 				</section>
+				<hr />
 			</div>
 			<section>
 				<label for="text">Size:</label>
@@ -86,6 +87,16 @@
 					<option value="no-bezier,mask-implicit">Remove implicit points</option>
 					<option value="no-bezier,mask-off-curve">Remove control points</option>
 					<option value="mask-implicit,mask-off-curve">Only green points</option>
+				</select>
+			</section>
+			<section>
+				<label for="inputMode">Input Mode:</label>
+				<select id="inputMode">
+					<option value="characters" selected>Text</option>
+					<hr />
+					<option value="codepoints">Codepoints</option>
+					<option value="glyphIDs">Glyph IDs</option>
+					<option value="glyphOffsets">Glyph Offsets</option>
 				</select>
 			</section>
 			<section id="contoursSetting">
