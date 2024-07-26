@@ -763,7 +763,7 @@ async function main() {
             let pointingY = y2 - y1;
             let distance = Math.sqrt(pointingX ** 2 + pointingY ** 2);
             if (lastTouchDistance != null) {
-                camScale -= distance / 100;
+                camScale -= distance / 10000;
             }
             lastTouchDistance = distance;
         }
